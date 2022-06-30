@@ -2,7 +2,7 @@
 Simple clock
 with options similar to yad
 
-sclock.c requires libgtk3-dev
+sclock.c requires libgtk3-dev (3.22.30 and later)
 
 compiles with
 
