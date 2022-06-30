@@ -27,7 +27,12 @@ int main (int argc, char *argv[]) {
   s = DefaultScreen(disp);
 
   XVisualInfo vinfo;
-  XMatchVisualInfo(disp, DefaultScreen(disp), 32, TrueColor, &vinfo);
+  const char depths[] = { 32, 24, 8, 4, 2, 1, 0 };
+  for (int i = 0; depths[i]; i++) {
+      XMatchVisualInfo(disp, s, depths[i], TrueColor, &vinfo);
+      if (vinfo.visual)
+          break;
+  }
 
   XSetWindowAttributes attr;
   attr.override_redirect = False;
