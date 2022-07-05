@@ -10,7 +10,6 @@
 #include <cairo/cairo-xlib.h>
 #include <sys/select.h>
 
-
 /*  gcc sclockx.c -o sclockx $(pkg-config --cflags --libs cairo-xlib-xrender x11)  */
 
 struct xwindow {
@@ -29,6 +28,7 @@ struct options {
   int above;
   int splash;
   int start;
+  char date;
 };
 
 struct colors {
@@ -49,8 +49,8 @@ static const char sclockx_usage[] =
 "\n";
 
 static void
-draw (cairo_t *g, char *date,
-      struct colors *col);
+draw (cairo_t *g, int mode,
+      char *date, struct colors *col);
 
 static void
 set_source_color (cairo_t *g,
@@ -81,9 +81,7 @@ static void usage (void);
 
 int main (int argc, char **argv)
 {
-  struct colors col[4] = { 
-  {0, 255, 0, 1}, 
-}; 
+  struct colors col[4] = { {0, 255, 0, 1} }; 
   struct options opt = { 0 };
   /* initial values */
   opt.pos_x = -1;
@@ -91,9 +89,8 @@ int main (int argc, char **argv)
   opt.splash = 0;
   opt.start = 1;
 
-
   int c;
-  int i, index = 0;
+  int index = 0;
   static struct option long_options[] = {
       {"help",    no_argument,        0, 'h'},
       {"above",   no_argument,        0,  2 },
@@ -230,16 +227,17 @@ main_loop (struct xwindow *ctx,
 {
   int x11_fd;
   fd_set in_fds;
-  struct timeval tv = { 0 };
-  XEvent ev;
-  x11_fd = ConnectionNumber (ctx->disp);
   /* getopts opens some fds so next needs to be x11_fd +4; 
      It's usually +1
   */
+  struct timeval tv = { 0 };
+  XEvent ev;
+  x11_fd = ConnectionNumber (ctx->disp);
   int nfds = x11_fd + 4; 
   static char *date = "%r";
   Atom wm_delete_window = XInternAtom (ctx->disp, "WM_DELETE_WINDOW", False);
   XSetWMProtocols (ctx->disp, ctx->w, &wm_delete_window, 1);
+  static int mode = 0;
   for (;;) {
       FD_ZERO(&in_fds);
       FD_SET(x11_fd, &in_fds);
@@ -256,7 +254,7 @@ main_loop (struct xwindow *ctx,
       if (ret == -1)
           goto shutdown;
       if (ret == 0)
-          draw(ctx->cr, date, col);
+          draw(ctx->cr, mode, date, col);
 
       if (XPending (ctx->disp)) {
           XNextEvent (ctx->disp, &ev);
@@ -266,15 +264,8 @@ main_loop (struct xwindow *ctx,
               case ButtonPress:
                   switch(ev.xbutton.button){
                       case Button1:
-                      if (date == "%r")
-                          date = "%R:%S";
-                      else if (date == "%R:%S")
-                          date = "%a %d %b";
-                      else if (date == "%a %d %b")
-                          date = "      %Y";
-                      else
-                          date = "%r";
-                      draw(ctx->cr, date, col);
+                      mode = mode == 3 ? 0 : mode + 1;
+                      draw(ctx->cr, mode, date, col);
                       continue;
                       case Button3:
                            goto shutdown;
@@ -293,16 +284,17 @@ main_loop (struct xwindow *ctx,
 }
 
 static void
-draw (cairo_t *g, char *date,
-      struct colors *col)
+draw (cairo_t *g, int mode,
+      char *date, struct colors *col)
 {
   char buffer[64];
   time_t timer;
+  const char *fmt[] = {"%r", "%R:%S", "%a %d %b", "      %Y"};
 
   struct tm* tm_info;
   time (&timer);
   tm_info = localtime (&timer);
-  strftime (buffer, 64, date, tm_info);
+  strftime (buffer, 64, fmt[mode], tm_info);
 
   cairo_save (g);
   cairo_set_source_rgba (g,0,0,0,1);
@@ -312,15 +304,7 @@ draw (cairo_t *g, char *date,
 
   cairo_set_operator (g, CAIRO_OPERATOR_OVER);
   cairo_save (g);
-  if (date == "%r")
-      set_source_color(g, col, 0);
-  else if (date == "%R:%S")
-      set_source_color(g, col, 1);
-  else if (date == "%a %d %b")
-      set_source_color(g, col, 2);
-  else
-      set_source_color(g, col, 3);
-
+  set_source_color(g, col, mode);
   cairo_select_font_face(g,"Sans",CAIRO_FONT_SLANT_NORMAL,CAIRO_FONT_WEIGHT_BOLD);
   cairo_set_font_size(g,24);
   cairo_move_to (g, 0.0, 20.0);
