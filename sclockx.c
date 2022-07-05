@@ -230,13 +230,13 @@ main_loop (struct xwindow *ctx,
 {
   int x11_fd;
   fd_set in_fds;
+  struct timeval tv = { 0 };
+  XEvent ev;
+  x11_fd = ConnectionNumber (ctx->disp);
   /* getopts opens some fds so next needs to be x11_fd +4; 
      It's usually +1
   */
   int nfds = x11_fd + 4; 
-  struct timeval tv = { 0 };
-  XEvent ev;
-  x11_fd = ConnectionNumber (ctx->disp);
   static char *date = "%r";
   Atom wm_delete_window = XInternAtom (ctx->disp, "WM_DELETE_WINDOW", False);
   XSetWMProtocols (ctx->disp, ctx->w, &wm_delete_window, 1);
