@@ -46,11 +46,13 @@ static const char sclockx_usage[] =
 "  --posx=           Set X position\n"
 "  --posy=           Set Y position\n"
 "  --splash          Set window type to splash\n"
+"  --start=          Start mode 0-3 default is 0\n"
 "\n";
 
 static void
-draw (cairo_t *g, int mode,
-      char *date, struct colors *col);
+draw (cairo_t *g,
+      int mode,
+      struct colors *col);
 
 static void
 set_source_color (cairo_t *g,
@@ -68,7 +70,8 @@ set_cairo (struct xwindow *ctx);
 
 static void
 main_loop (struct xwindow *ctx,
-           struct colors *col);
+           struct colors *col,
+           int mode);
 
 static void
 set_hints (struct xwindow *ctx,
@@ -87,7 +90,7 @@ int main (int argc, char **argv)
   opt.pos_x = -1;
   opt.pos_y = -1;
   opt.splash = 0;
-  opt.start = 1;
+  opt.start = 0;
 
   int c;
   int index = 0;
@@ -98,11 +101,11 @@ int main (int argc, char **argv)
       {"posx",    required_argument,  0, 'x'},
       {"posy",    required_argument,  0, 'y'},
       {"splash",  no_argument,        0,  1 },
-      {"start",  required_argument,   0, 's'},
+      {"start",   required_argument,  0, 's'},
       {0,         0,                  0,  0 }
   };
 
-  while ((c = getopt_long(argc, argv, "hx:y:0:12",
+  while ((c = getopt_long(argc, argv, "hx:y:0:12s:",
                           long_options, NULL)) != -1) {
       switch (c) {
           case 'x':
@@ -132,6 +135,12 @@ int main (int argc, char **argv)
           case 2:
               opt.above = 1;
               break;
+          case 's':
+              if (atoi(optarg) >= 0 && atoi(optarg) < 4)
+                  opt.start = atoi(optarg);
+              else
+                  usage();
+              break;
           case 'h':
           default:
               usage();
@@ -158,7 +167,7 @@ int main (int argc, char **argv)
   x11_move_window (&ctx, &opt);
   XSync (ctx.disp, False);
 
-  main_loop (&ctx, col);
+  main_loop (&ctx, col, opt.start);
 
   cairo_destroy (ctx.cr);
   cairo_surface_destroy (ctx.ximg);
@@ -223,21 +232,20 @@ set_cairo (struct xwindow *ctx)
 
 static void
 main_loop (struct xwindow *ctx,
-           struct colors *col)
+           struct colors *col,
+           int mode)
 {
   int x11_fd;
   fd_set in_fds;
-  /* getopts opens some fds so next needs to be x11_fd +4; 
-     It's usually +1
-  */
   struct timeval tv = { 0 };
   XEvent ev;
   x11_fd = ConnectionNumber (ctx->disp);
+  /* getopts opens some fds so next needs to be x11_fd +4; 
+     It's usually +1
+  */
   int nfds = x11_fd + 4; 
-  static char *date = "%r";
   Atom wm_delete_window = XInternAtom (ctx->disp, "WM_DELETE_WINDOW", False);
   XSetWMProtocols (ctx->disp, ctx->w, &wm_delete_window, 1);
-  static int mode = 0;
   for (;;) {
       FD_ZERO(&in_fds);
       FD_SET(x11_fd, &in_fds);
@@ -254,7 +262,7 @@ main_loop (struct xwindow *ctx,
       if (ret == -1)
           goto shutdown;
       if (ret == 0)
-          draw(ctx->cr, mode, date, col);
+          draw(ctx->cr, mode, col);
 
       if (XPending (ctx->disp)) {
           XNextEvent (ctx->disp, &ev);
@@ -265,7 +273,7 @@ main_loop (struct xwindow *ctx,
                   switch(ev.xbutton.button){
                       case Button1:
                       mode = mode == 3 ? 0 : mode + 1;
-                      draw(ctx->cr, mode, date, col);
+                      draw(ctx->cr, mode, col);
                       continue;
                       case Button3:
                            goto shutdown;
@@ -284,8 +292,9 @@ main_loop (struct xwindow *ctx,
 }
 
 static void
-draw (cairo_t *g, int mode,
-      char *date, struct colors *col)
+draw (cairo_t *g,
+      int mode,
+      struct colors *col)
 {
   char buffer[64];
   time_t timer;
