@@ -52,8 +52,8 @@ on_timeout (gpointer user_data)
     date = "%r";
     font = "Sans Bold 20";
 
-    gchar *markup = g_strdup_printf ("<span font='%s' foreground='%s'>%s</span>",
-                                     font, color, buff);
+    markup = g_strdup_printf ("<span font='%s' foreground='%s'>%s</span>",
+                               font, color, buff);
 
     if (out)
        free (out);
@@ -67,7 +67,8 @@ on_timeout (gpointer user_data)
   return G_SOURCE_CONTINUE;
 }
 
-void destroy_handler (GtkApplication* app, gpointer data)
+void destroy_handler (GtkApplication* app,
+                      gpointer data)
 {
   g_application_quit(G_APPLICATION (data));
 }
@@ -79,7 +80,9 @@ toggle_lock_position (GtkWidget *menu_item, gpointer user_data)
 }
 
 static gboolean
-key_handler (GtkWidget *w, GdkEventKey *ev, gpointer data)
+key_handler (GtkWidget *w,
+             GdkEventKey *ev,
+             gpointer data)
 {
   GtkApplication *app = GTK_APPLICATION (data);
   switch (ev->keyval)
@@ -92,7 +95,9 @@ key_handler (GtkWidget *w, GdkEventKey *ev, gpointer data)
 }
 
 static gboolean
-button_handler (GtkWidget *window, GdkEventButton *ev, gpointer data)
+button_handler (GtkWidget *window,
+                GdkEventButton *ev,
+                gpointer data)
 {
   if ((ev->button == 1) && (lock == FALSE))
     {
@@ -119,8 +124,10 @@ button_handler (GtkWidget *window, GdkEventButton *ev, gpointer data)
       gtk_widget_show (exit);
       gtk_menu_shell_append (GTK_MENU_SHELL (popup_menu), toggle_lock);
       gtk_menu_shell_append (GTK_MENU_SHELL (popup_menu), exit);
-      g_signal_connect (G_OBJECT (toggle_lock), "activate", G_CALLBACK (toggle_lock_position), NULL);
-      g_signal_connect (G_OBJECT (exit), "activate", G_CALLBACK (destroy_handler), app);
+      g_signal_connect (G_OBJECT (toggle_lock), "activate",
+                        G_CALLBACK (toggle_lock_position), NULL);
+      g_signal_connect (G_OBJECT (exit), "activate",
+                        G_CALLBACK (destroy_handler), app);
       gtk_menu_popup_at_pointer (GTK_MENU (popup_menu), NULL);
       return TRUE;
     }
@@ -245,8 +252,6 @@ activate (GtkApplication *app,
                     G_CALLBACK (geometry_hints), NULL);
   g_signal_connect (G_OBJECT (window), "draw",
                     G_CALLBACK (draw_handler), NULL);
-  g_signal_connect (G_OBJECT (window), "draw",
-                    G_CALLBACK (draw_handler), NULL);
   g_signal_connect (G_OBJECT (window), "composited-changed",
                     G_CALLBACK (composited_changed), NULL);
   gtk_widget_show_all (window);
@@ -346,7 +351,7 @@ main (int argc,
 
   opts = get_options (argc, argv);
 
-  if (opts == 1)
+  if (opts)
      return 1;
 
   app = gtk_application_new ("org.gtk.simple_clock",
