@@ -16,6 +16,7 @@ static gchar *font = NULL;
 static gboolean above = FALSE;
 static gint border;
 static gboolean center = FALSE;
+static gboolean close_on_unfocus = FALSE;
 static gboolean lock = FALSE;
 static gboolean stick = FALSE;
 static gint opacity;
@@ -30,12 +31,12 @@ on_timeout (gpointer user_data)
   char *out = NULL;
 
   time_t timer;
-  char buff[64];
+  char buff[256];
   struct tm* tm_info;
 
   time (&timer);
   tm_info = localtime (&timer);
-  strftime (buff, 64, date, tm_info);
+  strftime (buff, 256, date, tm_info);
 
   gchar *markup = g_strdup_printf ("<b><span font='%s' foreground='%s'>%s</span></b>",
                                    font, color, buff);
@@ -209,7 +210,7 @@ activate (GtkApplication *app,
   GtkWidget           *label;
 
   window = gtk_application_window_new (app);
-  gtk_window_set_title (GTK_WINDOW (window), "slock");
+  gtk_window_set_title (GTK_WINDOW (window), "sclock");
   gtk_window_set_default_size (GTK_WINDOW (window), 10, 10);
   gtk_window_set_decorated (GTK_WINDOW (window), FALSE);
   gtk_window_set_skip_pager_hint (GTK_WINDOW (window), TRUE);
@@ -235,8 +236,8 @@ activate (GtkApplication *app,
   gtk_grid_set_row_spacing (GTK_GRID (grid), 10);
 
   label = gtk_label_new (NULL);
-  gtk_widget_show (label);
   g_timeout_add (1000, on_timeout, label);
+  gtk_widget_show (label);
   gtk_widget_set_halign (label, GTK_ALIGN_CENTER);
 
   gtk_grid_attach (GTK_GRID (grid), label, 0, 0, 1, 1);
@@ -255,11 +256,13 @@ activate (GtkApplication *app,
                     G_CALLBACK (draw_handler), NULL);
   g_signal_connect (G_OBJECT (window), "composited-changed",
                     G_CALLBACK (composited_changed), NULL);
+  if (close_on_unfocus)
+      g_signal_connect (G_OBJECT (window), "focus-out-event",
+                        G_CALLBACK (destroy_handler), app);
   gtk_widget_show_all (window);
 
   if ((posx != 0) || (posy != 0))
      gtk_window_move (GTK_WINDOW (window), posx, posy);
-  
   on_timeout (label);
 }
 
@@ -277,6 +280,8 @@ get_options (int argc,
        "Set border color", "COLOR" },
     { "center",  0, 0, G_OPTION_ARG_NONE,   &center,
        "Place window at the center of the screen", NULL },
+    { "close-on-unfocus",  0, 0, G_OPTION_ARG_NONE,   &close_on_unfocus,
+       "Close the window if it looses focus", NULL },
     { "color",       0, 0, G_OPTION_ARG_STRING,  &color,
        "Specify color of the label, white, #FFFFFF", "COLOR" },
     { "date",        0, 0, G_OPTION_ARG_STRING,  &date,
