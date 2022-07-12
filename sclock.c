@@ -235,6 +235,7 @@ activate (GtkApplication *app,
   gtk_grid_set_row_spacing (GTK_GRID (grid), 10);
 
   label = gtk_label_new (NULL);
+  gtk_widget_show (label);
   g_timeout_add (1000, on_timeout, label);
   gtk_widget_set_halign (label, GTK_ALIGN_CENTER);
 
@@ -258,6 +259,8 @@ activate (GtkApplication *app,
 
   if ((posx != 0) || (posy != 0))
      gtk_window_move (GTK_WINDOW (window), posx, posy);
+  
+  on_timeout (label);
 }
 
 static int
